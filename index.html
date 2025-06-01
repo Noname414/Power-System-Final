@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>電力系統期末複習儀表板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f8f7f4;
+            color: #3d405b;
+        }
+
+        .nav-button {
+            transition: all 0.3s ease;
+        }
+
+        .nav-button.active {
+            background-color: #81b29a;
+            color: #ffffff;
+            font-weight: 700;
+        }
+
+        .sub-nav-button {
+            transition: all 0.3s ease;
+        }
+
+        .sub-nav-button.active {
+            background-color: #e07a5f;
+            color: #ffffff;
+            transform: translateX(4px);
+        }
+
+        .content-card {
+            background-color: #ffffff;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+    </style>
+</head>
+
+<body class="antialiased">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-[#3d405b]">電力系統期末複習儀表板</h1>
+            <p class="mt-2 text-lg text-gray-600">互動式學習指南，助您掌握核心概念</p>
+        </header>
+
+        <nav id="main-nav" class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mb-8">
+        </nav>
+
+        <main id="content-area" class="grid grid-cols-1 lg:grid-cols-12 gap-8 min-h-[60vh]">
+            <aside id="sub-nav-container" class="lg:col-span-3">
+                <div id="sub-nav" class="sticky top-8 bg-white p-4 rounded-xl shadow-md space-y-2">
+                </div>
+            </aside>
+            <section id="main-content" class="lg:col-span-9">
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const appData = {
+            "ch10": {
+                name: "CH10 系統保護",
+                topics: {
+                    "intro": {
+                        title: "章節介紹",
+                        content: `
+                            <h3 class="text-2xl font-bold mb-4 text-[#3d405b]">第十章：系統保護</h3>
+                            <p class="text-gray-700 leading-relaxed">本章節將介紹電力系統保護的基礎。系統保護的目標是在發生故障或異常情況時，能以最高的靈敏度快速偵測並隔離故障部分，同時確保在正常或可容許的運轉條件下不會誤動作。一個設計良好的保護系統對於維護電力系統的穩定性、安全性與可靠性至關重要。我們將探討保護系統的基本元件、各類電驛的工作原理，以及它們如何協調運作以保護放射式、環路等多樣化的電力網路。</p>
+                        `
+                    },
+                    "importance": {
+                        title: "保護的重要性與元件",
+                        content: `
+                            <h4 class="text-xl font-bold mb-3">系統保護的定義與重要性</h4>
+                            <p class="mb-4">系統保護是應用和設定電驛及/或熔絲，以提供對故障和不良條件的最大靈敏度，同時避免在允許或可容忍的條件下誤動作。短路若未迅速清除，可能導致絕緣損壞、導體熔化、火災、爆炸及機械損壞。</p>
+                            <h4 class="text-xl font-bold mb-3">保護設備動作時間</h4>
+                            <div class="chart-container h-64 md:h-72"><canvas id="clearingTimeChart"></canvas></div>
+                            <p class="text-sm text-center text-gray-500 mt-2">不同電壓等級的典型故障清除時間比較</p>
+                            <h4 class="text-xl font-bold mt-6 mb-3">系統保護的基本元件</h4>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><b>儀表用變壓器 (Instrument Transformers):</b> 比流器 (CT) 和比壓器 (VT)，將高電壓/大電流轉換為標準測量值。</li>
+                                <li><b>電驛 (Relays):</b> 系統的大腦，偵測異常並發出跳脫信號。</li>
+                                <li><b>斷路器 (Circuit Breakers):</b> 系統的肌肉，接收信號後實際斷開電路。</li>
+                            </ul>
+                        `
+                    },
+                    "overcurrent": {
+                        title: "過電流電驛",
+                        content: `
+                            <h4 class="text-xl font-bold mb-3">過電流電驛 (Overcurrent Relays)</h4>
+                            <p class="mb-4">用來區分正常運轉和故障情況。分為瞬時型和時延型。</p>
+                            <ul class="list-disc list-inside space-y-2 mb-4">
+                                <li><b>瞬時過電流電驛:</b> 當電流超過設定值 (pickup current, Ip) 時立即動作。</li>
+                                <li><b>時延過電流電驛:</b> 動作時間與電流大小成反比，提供時間延遲。具有電流抽頭和時間轉盤設定。</li>
+                            </ul>
+                            <div class="chart-container h-64 md:h-72"><canvas id="relayCurveChart"></canvas></div>
+                            <p class="text-sm text-center text-gray-500 mt-2">不同類型時延電驛的時間-電流特性曲線示意圖</p>
+                        `
+                    },
+                    "coordination": {
+                        title: "放射式系統與協調",
+                        content: `
+                            <h4 class="text-xl font-bold mb-3">放射式系統保護與協調</h4>
+                            <p class="mb-4">在放射式系統中，使用時延過電流電驛進行保護，目標是切斷最少的負載。</p>
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <h5 class="font-semibold mb-2">關鍵概念</h5>
+                                <ul class="list-decimal list-inside space-y-2 text-gray-800">
+                                    <li><b>電驛協調:</b> 調整各電驛的時間延遲，使最接近故障的斷路器先跳脫。</li>
+                                    <li><b>主保護與後衛保護:</b> 最近的斷路器提供主保護，其上游斷路器提供後衛保護。</li>
+                                    <li><b>協調時間間隔:</b> 主、後衛保護之間的時間差，通常為 0.2-0.5 秒，確保選擇性。</li>
+                                    <li><b>接地電驛:</b> 專用於接地故障，設定值通常較低。</li>
+                                </ul>
+                            </div>
+                        `
+                    },
+                    "zones": {
+                        title: "保護區與差動電驛",
+                        content: `
+                            <h4 class="text-xl font-bold mb-3">保護區 (Zones of Protection)</h4>
+                            <p class="mb-4">將電力系統劃分為多個保護區 (如發電機、變壓器、匯流排)，是保護系統設計的基本理念。保護區會重疊，確保沒有保護死角。</p>
+                             <div class="w-full text-center p-4 bg-blue-50 rounded-lg">
+                                <div class="flex justify-center items-center space-x-1 text-sm">
+                                    <span>G</span><div class="border-t-2 border-blue-400 w-16"></div><span>T</span><div class="border-t-2 border-blue-400 w-16"></div><span>Line</span><div class="border-t-2 border-blue-400 w-16"></div><span>Bus</span>
+                                </div>
+                                <p class="text-xs mt-2 text-gray-500">保護區示意圖</p>
+                            </div>
+                            <h4 class="text-xl font-bold mt-6 mb-3">差動電驛 (Differential Relays)</h4>
+                            <p class="mb-4">一種高速、高選擇性的保護方式，常用於發電機、變壓器和匯流排。其原理是比較流入和流出被保護設備的電流量。正常情況下兩者應相等，若不等則表示內部有故障。</p>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><b>優點:</b> 只對保護區內故障反應，無需與其他區域協調，動作快速。</li>
+                                <li><b>挑戰:</b> 需克服 CT 比例失配、變壓器相位移及加能湧入電流等問題。</li>
+                            </ul>
+                        `
+                    },
+                }
+            },
+            "ch11": {
+                name: "CH11 暫態穩定度",
+                topics: {
+                    "intro": {
+                        title: "章節介紹",
+                        content: `
+                            <h3 class="text-2xl font-bold mb-4 text-[#3d405b]">第十一章：暫態穩定度</h3>
+                            <p class="text-gray-700 leading-relaxed">本章節探討電力系統在遭受重大擾動（如短路故障、發電機跳脫或線路開關）後，維持同步運轉的能力。暫態穩定度是衡量系統"韌性"的關鍵指標。我們將從描述發電機轉子動態的搖擺方程式入手，進而介紹等面積法則——這是一種直觀分析單機對無窮匯流排系統穩定度的圖解法。最後，也會提及解決更複雜多機系統穩定度問題時所使用的數值積分方法。</p>
+                        `
+                    },
+                    "swing": {
+                        title: "搖擺方程式",
+                        content: `
+                            <h4 class="text-xl font-bold mb-3">搖擺方程式 (The Swing Equation)</h4>
+                            <p class="mb-4">此方程式描述發電機轉子在擾動下的動態行為。它是一個二階非線性微分方程式，表示轉子的角加速度與輸入的機械轉矩和輸出的電氣轉矩之差成正比。</p>
+                            <div class="bg-gray-100 p-4 rounded-lg text-center font-mono text-sm md:text-base">
+                                $$M \\frac{d^2\\delta}{dt^2} = P_m - P_e$$
+                            </div>
+                            <ul class="mt-4 list-disc list-inside space-y-2">
+                                <li><b>$M$:</b> 慣量常數 (或 $H$)</li>
+                                <li><b>$\\delta$:</b> 轉子角</li>
+                                <li><b>$P_m$:</b> 機械輸入功率</li>
+                                <li><b>$P_e$:</b> 電氣輸出功率</li>
+                            </ul>
+                            <h5 class="font-semibold mt-4 mb-2">慣量常數 ($H$)</h5>
+                            <p>表示同步轉速下儲存的動能與發電機額定容量之比 (單位 p.u.-s)，$H$ 值越大，系統越能抵抗頻率變化，穩定度越高。</p>
+                        `
+                    },
+                    "equal_area": {
+                        title: "等面積法則",
+                        content: `
+                            <h4 class="text-xl font-bold mb-3">等面積法則 (The Equal-Area Criterion)</h4>
+                            <p class="mb-4">這是一種圖解法，用於判斷單機對無窮匯流排系統在擾動後能否維持穩定。其核心思想是：如果故障清除後，發電機轉子減速時所釋放的能量 (減速面積 $A_2$) 等於或大於加速期間所儲存的能量 (加速面積 $A_1$)，則系統穩定。</p>
+                            <div class="chart-container h-64 md:h-72"><canvas id="equalAreaChart"></canvas></div>
+                            <p class="text-sm text-center text-gray-500 mt-2">功率-角度曲線與等面積法則示意圖</p>
+                            <ul class="mt-4 list-disc list-inside space-y-2">
+                                <li><b>加速面積 ($A_1$):</b> 故障期間，機械功率 $P_m$ 大於電氣功率 $P_e$，轉子加速，所累積的面積。</li>
+                                <li><b>減速面積 ($A_2$):</b> 故障清除後，電氣功率 $P_e$ 大於機械功率 $P_m$，轉子減速，可用的減速面積。</li>
+                                <li><b>穩定條件:</b> $A_2 \\ge A_1$</li>
+                                <li><b>臨界清除角/時間:</b> 使 $A_1 = A_2$ 的最大故障清除角度或時間。</li>
+                            </ul>
+                        `
+                    },
+                }
+            },
+            "ch12": {
+                name: "CH12 電力系統控制",
+                topics: {
+                    "intro": {
+                        title: "章節介紹",
+                        content: `
+                            <h3 class="text-2xl font-bold mb-4 text-[#3d405b]">第十二章：電力系統控制</h3>
+                            <p class="text-gray-700 leading-relaxed">本章節聚焦於維持電力系統高品質運轉的兩大核心控制機制：發電機電壓控制（AVR）和負載頻率控制（LFC）。AVR 負責維持系統電壓在額定範圍內，並管理無效功率潮流；而 LFC 則負責維持系統頻率穩定（例如 60Hz），並控制互聯區域之間的實功率交換。我們將探討這兩個控制系統的獨立運作原理，以及它們在大型互聯電力系統中如何協同工作，以應對負載變化，確保供電的穩定與可靠。</p>
+                        `
+                    },
+                    "avr_lfc": {
+                        title: "AVR 與 LFC",
+                        content: `
+                            <h4 class="text-xl font-bold mb-3">發電機電壓控制 (AVR) 與負載頻率控制 (LFC)</h4>
+                            <p class="mb-4">AVR 和 LFC 是電力系統最基本的兩個自動控制迴路，通常可以分開獨立分析。</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="bg-blue-50 p-4 rounded-lg">
+                                    <h5 class="font-bold text-lg mb-2 text-blue-800">AVR (自動電壓調整器)</h5>
+                                    <p class="text-blue-700"><b>目標:</b> 控制發電機端電壓 ($V_t$) 與虛功率 ($Q$)。</p>
+                                    <p class="text-blue-700"><b>方式:</b> 調整發電機的勵磁電流。</p>
+                                    <p class="text-blue-700"><b>特性:</b> 反應速度快 (秒級)。</p>
+                                </div>
+                                <div class="bg-green-50 p-4 rounded-lg">
+                                    <h5 class="font-bold text-lg mb-2 text-green-800">LFC (負載頻率控制) / 調速器</h5>
+                                    <p class="text-green-700"><b>目標:</b> 控制系統頻率 ($f$) 與實功率 ($P$)。</p>
+                                    <p class="text-green-700"><b>方式:</b> 調整渦輪機的機械功率輸入 (如蒸汽閥門)。</p>
+                                    <p class="text-green-700"><b>特性:</b> 反應速度慢 (數秒至數十秒)。</p>
+                                </div>
+                            </div>
+                        `
+                    },
+                    "ace": {
+                        title: "互聯系統與ACE",
+                        content: `
+                            <h4 class="text-xl font-bold mb-3">互聯系統與區域控制誤差 (ACE)</h4>
+                            <p class="mb-4">在大型互聯電力系統中，每個區域都負責維持自身的發電與負載平衡，並遵守與鄰近區域的電力交換計畫。LFC 透過最小化「區域控制誤差 (ACE)」來達成此目標。</p>
+                            <div class="bg-gray-100 p-4 rounded-lg text-center font-mono text-sm md:text-base mb-4">
+                                $$ACE = (P_{tie} - P_{sched}) + B (f_{act} - f_{sched})$$
+                            </div>
+                            <ul class="list-disc list-inside space-y-2">
+                                <li><b>$(P_{tie} - P_{sched})$:</b> 實際聯絡線功率與計畫功率的偏差。</li>
+                                <li><b>$B (f_{act} - f_{sched})$:</b> 頻率偏差乘以一個偏置常數。</li>
+                                <li><b>LFC 目標:</b> 透過調整區域內的發電機組出力，使 ACE 趨近於零。這意味著每個區域都應自行吸收其內部的負載變化，而不影響整體系統的頻率和聯絡線潮流。</li>
+                            </ul>
+                        `
+                    },
+                }
+            },
+            "ch13": {
+                name: "CH13 輸電線暫態",
+                topics: {
+                    "intro": {
+                        title: "章節介紹",
+                        content: `
+                            <h3 class="text-2xl font-bold mb-4 text-[#3d405b]">第十三章：輸電線暫態運轉</h3>
+                            <p class="text-gray-700 leading-relaxed">本章節探討由雷擊或開關操作等事件引發的暫態過電壓現象。這些持續時間極短（微秒至毫秒）但電壓幅值極高的突波，會像波浪一樣沿著輸電線傳播，並在線路端點或阻抗不連續處發生反射和折射。我們將介紹描述此現象的行波理論、特性阻抗等概念，並學習使用貝利格子圖等工具來分析電壓和電流波的傳播過程。理解這些暫態行為對於電力設備的絕緣設計與突波保護至關重要。</p>
+                        `
+                    },
+                    "waves": {
+                        title: "行波與反射",
+                        content: `
+                            <h4 class="text-xl font-bold mb-3">進行波、反射與折射</h4>
+                            <p class="mb-4">突波電壓和電流沿輸電線以接近光速傳播，稱為進行波 (Traveling waves)。當進行波遇到阻抗不連續點（如線路末端或連接到電纜）時，一部分能量會反射回來（反射波），另一部分會繼續前進（折射波）。</p>
+                             <div class="bg-gray-100 p-4 rounded-lg">
+                                <h5 class="font-semibold mb-2">關鍵參數</h5>
+                                <ul class="list-decimal list-inside space-y-2 text-gray-800">
+                                    <li><b>特性阻抗 ($Z_c$):</b> $Z_c = \\sqrt{L/C}$，是無耗損線路自身的屬性。架空線約 400Ω，電纜約 50Ω。</li>
+                                    <li><b>波速 ($v$):</b> $v = 1/\\sqrt{LC}$，接近光速。</li>
+                                    <li><b>反射係數 ($\\rho$):</b> $\\rho = \\frac{Z_L - Z_c}{Z_L + Z_c}$，決定反射波的大小與極性。</li>
+                                    <li><b>折射係數 ($\\tau$):</b> $\\tau = 1 + \\rho$，決定穿透波的大小。</li>
+                                </ul>
+                            </div>
+                            <h5 class="font-semibold mt-4 mb-2">極端情況</h5>
+                             <ul class="list-disc list-inside space-y-2">
+                                <li><b>開路 ($Z_L = \\infty$):</b> $\\rho = +1$，電壓加倍，電流為零。</li>
+                                <li><b>短路 ($Z_L = 0$):</b> $\\rho = -1$，電壓為零，電流加倍。</li>
+                             </ul>
+                        `
+                    },
+                    "surges": {
+                        title: "雷擊與開關突波",
+                        content: `
+                            <h4 class="text-xl font-bold mb-3">暫態過電壓類型</h4>
+                            <p class="mb-4">暫態過電壓主要由雷擊和開關操作引起，它們的波形特性顯著不同。</p>
+                            <div class="chart-container h-64 md:h-72"><canvas id="surgeChart"></canvas></div>
+                            <p class="text-sm text-center text-gray-500 mt-2">雷擊突波與開關突波波形比較</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                                <div class="bg-red-50 p-4 rounded-lg">
+                                    <h5 class="font-bold text-lg mb-2 text-red-800">雷擊突波</h5>
+                                    <p class="text-red-700"><b>波前時間:</b> 短 (約 1.2 μs)</p>
+                                    <p class="text-red-700"><b>波尾時間:</b> 較短 (約 50 μs)</p>
+                                    <p class="text-red-700"><b>影響:</b> 對中低壓系統絕緣威脅大。可透過屏蔽線保護。</p>
+                                </div>
+                                <div class="bg-purple-50 p-4 rounded-lg">
+                                    <h5 class="font-bold text-lg mb-2 text-purple-800">開關突波</h5>
+                                    <p class="text-purple-700"><b>波前時間:</b> 長 (數百 μs)</p>
+                                    <p class="text-purple-700"><b>波尾時間:</b> 很長 (數 ms)</p>
+                                    <p class="text-purple-700"><b>影響:</b> 對 EHV/UHV 系統絕緣威脅大於雷擊。可透過斷路器串接電阻抑制。</p>
+                                </div>
+                            </div>
+                        `
+                    },
+                    "bewley": {
+                        title: "貝利格子圖",
+                        content: `
+                            <h4 class="text-xl font-bold mb-3">貝利格子圖 (Bewley Lattice Diagram)</h4>
+                            <p class="mb-4">這是一種圖形工具，用於手動計算和追蹤進行波在線路中經過多次反射和折射後的電壓和電流值。圖的縱軸是時間，橫軸是距離。</p>
+                            <div class="bg-white p-4 rounded-lg border">
+                                <p class="mb-2"><strong>使用方法:</strong></p>
+                                <ol class="list-decimal list-inside space-y-2">
+                                    <li>從故障點 ($t=0, x=d$) 畫出初始波，向兩端傳播。</li>
+                                    <li>當波到達線路端點時，乘以該端的反射係數 ($\\rho$)，畫出反射波。</li>
+                                    <li>重複此過程，畫出多次來回反射的波。</li>
+                                    <li>在任何特定時間 ($t$) 和位置 ($x$)，該點的總電壓是所有穿過該點的波的代數和。</li>
+                                </ol>
+                            </div>
+                        `
+                    }
+                }
+            }
+        };
+
+        let activeChapter = "ch10";
+        let activeTopic = "intro";
+        let chartInstances = {};
+
+        const mainNav = document.getElementById('main-nav');
+        const subNav = document.getElementById('sub-nav');
+        const mainContent = document.getElementById('main-content');
+
+        function render() {
+            renderMainNav();
+            renderSubNav();
+            renderMainContent();
+        }
+
+        function renderMainNav() {
+            mainNav.innerHTML = '';
+            for (const chKey in appData) {
+                const chapter = appData[chKey];
+                const button = document.createElement('button');
+                button.textContent = chapter.name;
+                button.className = `nav-button w-full p-3 text-sm md:text-base font-semibold rounded-lg shadow ${activeChapter === chKey ? 'active' : 'bg-white hover:bg-gray-100'}`;
+                button.onclick = () => {
+                    activeChapter = chKey;
+                    activeTopic = "intro";
+                    render();
+                };
+                mainNav.appendChild(button);
+            }
+        }
+
+        function renderSubNav() {
+            subNav.innerHTML = '';
+            const chapter = appData[activeChapter];
+            for (const topicKey in chapter.topics) {
+                const topic = chapter.topics[topicKey];
+                const button = document.createElement('button');
+                button.textContent = topic.title;
+                button.className = `sub-nav-button w-full text-left p-3 rounded-md ${activeTopic === topicKey ? 'active' : 'hover:bg-gray-100'}`;
+                button.onclick = () => {
+                    activeTopic = topicKey;
+                    render();
+                };
+                subNav.appendChild(button);
+            }
+        }
+
+        function renderMainContent() {
+            const topic = appData[activeChapter].topics[activeTopic];
+            mainContent.innerHTML = `<div class="content-card p-6 md:p-8">${topic.content}</div>`;
+
+            if (typeof MathJax !== 'undefined' && typeof MathJax.typeset === 'function') {
+                MathJax.typesetPromise([mainContent]).catch((err) => console.error('MathJax typesetting error:', err));
+            }
+
+
+            if (chartInstances[activeTopic]) {
+                chartInstances[activeTopic].destroy();
+            }
+
+            setTimeout(() => {
+                switch (`${activeChapter}-${activeTopic}`) {
+                    case 'ch10-importance':
+                        createClearingTimeChart();
+                        break;
+                    case 'ch10-overcurrent':
+                        createRelayCurveChart();
+                        break;
+                    case 'ch11-equal_area':
+                        createEqualAreaChart();
+                        break;
+                    case 'ch13-surges':
+                        createSurgeChart();
+                        break;
+                }
+            }, 100);
+        }
+
+        function createClearingTimeChart() {
+            const ctx = document.getElementById('clearingTimeChart').getContext('2d');
+            chartInstances[activeTopic] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['較低電壓', '特高壓 (EHV)'],
+                    datasets: [{
+                        label: '清除時間 (週波)',
+                        data: [12.5, 3],
+                        backgroundColor: ['#f8961e', '#f94144'],
+                        borderColor: ['#f8961e', '#f94144'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: '故障清除時間比較' },
+                        legend: { display: false }
+                    },
+                    scales: { y: { beginAtZero: true, title: { display: true, text: '週波 (cycles)' } } }
+                }
+            });
+        }
+
+        function createRelayCurveChart() {
+            const ctx = document.getElementById('relayCurveChart').getContext('2d');
+            chartInstances[activeTopic] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [2, 4, 6, 8, 10, 12, 14, 16, 18, 20], // Fault current multiple
+                    datasets: [
+                        { label: 'Inverse (CO-8)', data: [10, 5, 3.3, 2.5, 2, 1.6, 1.4, 1.2, 1.1, 1], borderColor: '#f94144', tension: 0.1 },
+                        { label: 'Very Inverse (CO-9)', data: [8, 3, 1.8, 1.2, 0.9, 0.7, 0.6, 0.5, 0.45, 0.4], borderColor: '#f3722c', tension: 0.1 },
+                        { label: 'Extremely Inverse (CO-11)', data: [6, 1.5, 0.7, 0.4, 0.25, 0.18, 0.13, 0.1, 0.08, 0.07], borderColor: '#90be6d', tension: 0.1 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { title: { display: true, text: '時延電驛特性曲線' }, legend: { position: 'top' } },
+                    scales: {
+                        y: { title: { display: true, text: '動作時間 (秒)' } },
+                        x: { title: { display: true, text: '故障電流倍數' } }
+                    }
+                }
+            });
+        }
+
+        function createEqualAreaChart() {
+            const ctx = document.getElementById('equalAreaChart').getContext('2d');
+            const data = {
+                labels: Array.from({ length: 181 }, (_, i) => i),
+                datasets: [{
+                    label: 'P_m (機械功率)',
+                    data: Array(181).fill(0.6),
+                    borderColor: '#f94144',
+                    borderWidth: 2,
+                    pointRadius: 0
+                }, {
+                    label: 'P_e (故障前)',
+                    data: Array.from({ length: 181 }, (_, i) => Math.sin(i * Math.PI / 180)),
+                    borderColor: '#43aa8b',
+                    borderWidth: 2,
+                    pointRadius: 0
+                }, {
+                    label: 'P_e (故障中)',
+                    data: Array.from({ length: 181 }, (_, i) => 0.3 * Math.sin(i * Math.PI / 180)),
+                    borderColor: '#f9c74f',
+                    borderDash: [5, 5],
+                    borderWidth: 2,
+                    pointRadius: 0
+                }, {
+                    label: '加速面積 A1',
+                    data: Array.from({ length: 181 }, (_, i) => (i >= 37 && i <= 75) ? 0.6 : NaN),
+                    fill: { target: { value: 0.35 }, above: 'rgba(249, 65, 68, 0.2)' },
+                    borderColor: 'transparent',
+                    pointRadius: 0,
+                    tension: 0.1
+                }, {
+                    label: '減速面積 A2',
+                    data: Array.from({ length: 181 }, (_, i) => (i >= 75 && i <= 125) ? Math.sin(i * Math.PI / 180) : NaN),
+                    fill: { target: { value: 0.6 }, below: 'rgba(67, 170, 139, 0.2)' },
+                    borderColor: 'transparent',
+                    pointRadius: 0,
+                    tension: 0.1
+                }]
+            };
+            chartInstances[activeTopic] = new Chart(ctx, {
+                type: 'line',
+                data: data,
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { title: { display: true, text: '等面積法則 (P vs δ)' }, legend: { position: 'top' } },
+                    scales: {
+                        y: { min: 0, max: 1.2, title: { display: true, text: '功率 (p.u.)' } },
+                        x: { type: 'linear', position: 'bottom', title: { display: true, text: '電力角 δ (度)' } }
+                    }
+                }
+            });
+        }
+
+        function createSurgeChart() {
+            const ctx = document.getElementById('surgeChart').getContext('2d');
+            const lightningData = [0, 0.8, 1, 0.9, 0.7, 0.5, 0.4, 0.3, 0.2, 0.15, 0.1];
+            const switchingData = [0, 0.2, 0.4, 0.6, 0.8, 1, 0.95, 0.9, 0.85, 0.8, 0.75];
+            chartInstances[activeTopic] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({ length: 11 }, (_, i) => i * 10), // Relative time
+                    datasets: [{
+                        label: '雷擊突波 (μs)',
+                        data: lightningData,
+                        borderColor: '#f94144',
+                        tension: 0.4
+                    }, {
+                        label: '開關突波 (ms)',
+                        data: switchingData,
+                        borderColor: '#577590',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { title: { display: true, text: '突波波形比較' } },
+                    scales: {
+                        y: { title: { display: true, text: '相對電壓幅值' } },
+                        x: { title: { display: true, text: '相對時間' } }
+                    }
+                }
+            });
+        }
+
+        window.onload = render;
+    </script>
+</body>
+
+</html>
